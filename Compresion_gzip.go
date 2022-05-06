@@ -7,6 +7,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"time"
 )
@@ -85,7 +86,7 @@ func main() {
 	if err != nil {
 		fmt.Printf("error: %v", err)
 	}
-	zr.Close()
+	defer zr.Close()
 	fmt.Printf("[READ] Elapsed: %+v\n", time.Since(start))
 	unGZIPBytes := unGZIP.Bytes()
 	fmt.Printf("[READ] Uncompressed Size: %+v\n", len(unGZIPBytes))
@@ -116,6 +117,7 @@ func main() {
 	ngz.Close()
 	fmt.Printf("[GZIP 2] Elapsed: %+v\n", time.Since(start))
 	inlineGZIPBytes := inlineGZIP.Bytes()
+	inlineGZIP2 := inlineGZIP
 	fmt.Printf("[GZIP 2] ngz: %+v\n", inlineGZIPBytes)
 	fmt.Printf("[GZIP 2] ngz: %T - Compressed size: %d\n\n", inlineGZIPBytes, len(inlineGZIPBytes))
 
@@ -130,7 +132,7 @@ func main() {
 	if err != nil {
 		fmt.Printf("error: %v", err)
 	}
-	nzr.Close()
+	defer nzr.Close()
 	fmt.Printf("[READ] Elapsed: %+v\n", time.Since(start))
 	nunGZIPBytes := nunGZIP.Bytes()
 	fmt.Printf("[READ] Uncompressed Size: %+v\n", len(nunGZIPBytes))
@@ -146,5 +148,37 @@ func main() {
 		fmt.Println("[READ] Slices match!!")
 	}
 
+	fmt.Println()
+
+	// another read example
+	start = time.Now()
+	n2zr, err := gzip.NewReader(&inlineGZIP2)
+	if err != nil {
+		fmt.Printf("error: %v", err)
+	}
+	uncompressedData, err := ioutil.ReadAll(n2zr)
+	if err != nil {
+		fmt.Printf("error: %v", err)
+	}
+	defer nzr.Close()
+	fmt.Printf("[READ] Elapsed: %+v\n", time.Since(start))
+	nunGZIPBytes = uncompressedData
+	fmt.Printf("[READ] Uncompressed Size: %+v\n", len(nunGZIPBytes))
+	mismatch = 0
+	for i := 0; i < len(nunGZIPBytes)-1; i++ {
+		if value[i] != nunGZIPBytes[i] {
+			mismatch++
+		}
+	}
+	if mismatch > 0 {
+		fmt.Printf("[READ] Slices doesn't match: %+v\n", nunGZIPBytes)
+	} else {
+		fmt.Println("[READ] Slices match!!")
+	}
+	fmt.Println()
+	// unmarshall
+	var resultado Embeddings
+	json.Unmarshal(nunGZIPBytes, &resultado)
+	fmt.Printf("Resultado: %+v\n", resultado)
 	fmt.Println()
 }
